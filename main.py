@@ -12,9 +12,9 @@ import numpy
 
 
 
-#cifar_trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=None)
+cifar_trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=None) # Transform ToTensor() 
 
-cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=None)
+cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=None) # Transform ToTensor()
 
 
 
@@ -34,6 +34,10 @@ hidden_size = 0
 num_classes = 10 # number of classes in CIFAR10
 num_channels = 3 # it is a colour image(RGB), so 3 classes, if grayscale image -> num_channels = 1
 batch_size = 0
+
+
+# train on GPU, if CUDA is available, else train on CPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  
 
 
 def adding_padding(image):
@@ -67,7 +71,7 @@ class CNN(Module):
 		self.fc2 = Linear(in_features=500, out_features=num_classes) # fully connected layer 2
 		self.logSoftmax = LogSoftmax(dim=1) # softmax activation function"""
 		
-def forward(self, x):
+def forward(self, x): # x represents a batch of input data to the network
 	# pass trough the first set 
 	#  CONV -> RELU -> POOL
 	x = self.conv1(x)
@@ -80,7 +84,7 @@ def forward(self, x):
 	x = self.maxpool2(x)
 	
     # flatten the output from previous sets
-	x = flatten(x, 1) # flatten into one dimension
+	x = flatten(x, 1) # flatten into 1D list
 	x = self.fc1(x)
 	x = self.relu3(x)
 	
