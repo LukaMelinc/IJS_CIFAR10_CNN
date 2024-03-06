@@ -33,7 +33,7 @@ batch_size = 0
 
 # basic layer structure
 class CNN(Module):
-	def __init__(self, numChannels, num_classes):
+	def __init__(self, num_channels, num_classes):
 		super(CNN, self).__init__()
 		# conv -> pool -> conv -> pool -> fc-> fc
 		self.conv1 = Conv2d(in_channels=numChannels, out_channels=20,kernel_size=(5, 5)) # conv layer
