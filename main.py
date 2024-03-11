@@ -4,8 +4,9 @@ import torchvision
 import torchvision.datasets as datasets
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn import ReLU, MaxPool2d
 from torch.nn import Module, Conv2d, Linear
-from torchvision import transforms, datasets, models, ReLU, MaxPool2d, LogSoftmax
+from torchvision import transforms, datasets, models
 from torch.utils.data import DataLoader, Dataset
 import time
 import matplotlib.pyplot as plt
@@ -29,7 +30,7 @@ lr = 0.01
 num_classes = 10 # number of classes in CIFAR10
 num_channels = 3 # it is a colour image(RGB), so 3 classes, if grayscale image -> num_channels = 1
 momentum = 0.9
-BATCH_SIZE = 0
+BATCH_SIZE = 32
 
 
 # init data loaders
