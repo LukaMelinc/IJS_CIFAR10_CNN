@@ -54,7 +54,7 @@ plt.show()"""
 
 
 
-def adding_padding(image):
+"""def adding_padding(image):
     #function for adding padding to images for convolution
     transform_to_tensor = transforms.ToTensor()
     image_original = image
@@ -63,24 +63,29 @@ def adding_padding(image):
 
     plt.imshow(padded_image_tensor.permute(1, 2, 0))  # Adjusting the channel dimension for matplotlib
     plt.show()
-    return padded_image_tensor
+    return padded_image_tensor"""
 
 # basic layer structure
 class CNN(Module):
 	def __init__(self, num_channels, num_classes):
 		super(CNN, self).__init__()
 		# first set CONV -> RELU -> POOL
-		self.conv1 = Conv2d(in_channels=num_channels, out_channels=20,kernel_size=(5, 5)) # conv layer
+		self.conv1 = Conv2d(in_channels=num_channels, out_channels=num_channels,kernel_size=(5, 5)) # conv layer
 		self.relu1 = ReLU() #relu activation
 		self.maxpool1 = MaxPool2d(kernel_size=(2, 2), stride=(2, 2)) # pooling layer
 		
         # second set CONV -> RELU -> POOL
-		self.conv2 = Conv2d(in_channels=20, out_channels=50,kernel_size=(5, 5)) # conv layer 2
+		self.conv2 = Conv2d(in_channels=num_channels, out_channels=num_channels,kernel_size=(5, 5)) # conv layer 2
 		self.relu2 = ReLU() # relu layer 
 		self.maxpool2 = MaxPool2d(kernel_size=(2, 2), stride=(2, 2)) #pooling layer 2
 		
+		#the last conv layer has 50 output channels, the final feature map = 5x5
+		# 50 * 5 * 5 = 1250 -> goes to in_features in the first fc layer
+		# out and in features of consecutive layers must match
+
+
         # first and second fully connected layer with ReLU
-		self.fc1 = Linear(in_features=800, out_features=500) # fully connected layer 
+		self.fc1 = Linear(in_features=1250, out_features=500) # fully connected layer 
 		self.relu3 = ReLU()
 		self.fc2 = Linear(in_features=500, out_features=num_classes) # fully connected layer 2
 		self.logSoftmax = LogSoftmax(dim=1) # softmax activation function"""
@@ -122,7 +127,6 @@ num_steps = len(trainDataLoader)
 
 for epoch in range(num_epochs):
        for i, (images, labels) in enumerate(trainDataLoader):
-              images = images.reshape(-1, 32*32).to(device)
               labels = labels.to(device)
               
 			  # forward pass
