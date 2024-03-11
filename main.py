@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import Module, Conv2d, Linear
 from torchvision import transforms, datasets, models, ReLU, MaxPool2d, LogSoftmax
+from torch.utils.data import DataLoader, Dataset
 import time
 import matplotlib.pyplot as plt
 import numpy
@@ -16,7 +17,30 @@ cifar_trainset = datasets.CIFAR10(root='./data', train=True, download=True, tran
 
 cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=None) # Transform ToTensor()
 
+# train on GPU, if CUDA is available, else train on CPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  
 
+# hyperparameters
+num_epochs = 10
+lr = 0.01
+num_layers = 0
+imput_size = 0
+hidden_size = 0
+num_classes = 10 # number of classes in CIFAR10
+num_channels = 3 # it is a colour image(RGB), so 3 classes, if grayscale image -> num_channels = 1
+momentum = 0.9
+BATCH_SIZE = 0
+
+
+# init data loaders
+
+trainDataLoader = DataLoader(cifar_trainset, shuffle=True, batch_size=BATCH_SIZE)
+
+testDataLoader = DataLoader(cifar_testset, batch_size=BATCH_SIZE)
+
+trainStep = len(trainDataLoader.dataset)
+
+testStep = len(testDataLoader.dataset)
 
 """for i in range(6):
     plt.subplot(2,3,i+1)
@@ -24,20 +48,6 @@ cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, tran
 plt.show()"""
 
 
-
-# hyperparameters
-num_epochs = 10
-lr = 0
-num_layers = 0
-imput_size = 0
-hidden_size = 0
-num_classes = 10 # number of classes in CIFAR10
-num_channels = 3 # it is a colour image(RGB), so 3 classes, if grayscale image -> num_channels = 1
-batch_size = 0
-
-
-# train on GPU, if CUDA is available, else train on CPU
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  
 
 
 def adding_padding(image):
@@ -71,25 +81,63 @@ class CNN(Module):
 		self.fc2 = Linear(in_features=500, out_features=num_classes) # fully connected layer 2
 		self.logSoftmax = LogSoftmax(dim=1) # softmax activation function"""
 		
-def forward(self, x): # x represents a batch of input data to the network
-	# pass trough the first set 
-	#  CONV -> RELU -> POOL
-	x = self.conv1(x)
-	x = self.relu1(x)
-	x = self.maxpool1(x)
-	
-    # second pass
-	x = self.conv2(x)
-	x = self.relu2(x)
-	x = self.maxpool2(x)
-	
-    # flatten the output from previous sets
-	x = flatten(x, 1) # flatten into 1D list
-	x = self.fc1(x)
-	x = self.relu3(x)
-	
-    # pass trought the softmax classifier
-	x = self.fc2(x)
-	output = self.logSoftmax(x)
-	
-    return output
+def forward(self, x):  # x represents a batch of input data to the network
+        # pass through the first set
+        #  CONV -> RELU -> POOL
+        x = self.conv1(x)
+        x = self.relu1(x)
+        x = self.maxpool1(x)
+        
+        # second pass
+        # CONV -> RELU -> POOL
+        x = self.conv2(x)
+        x = self.relu2(x)
+        x = self.maxpool2(x)
+        
+        # flatten the output from previous sets
+        x = flatten(x, 1)  # flatten into 1D list
+        x = self.fc1(x)
+        x = self.relu3(x)
+        
+        # pass through the softmax classifier
+        x = self.fc2(x)
+        output = self.logSoftmax(x)
+        
+        return output
+
+
+print("Start model CNN")
+# defining the training model
+model = CNN(num_channels, num_classes)
+optimizer = torch.optim.SGD(model.parameters(), lr, momentum)
+criterion = nn.CrossEntropyLoss()
+
+#initialize training
+
+num_steps = len(trainDataLoader)
+
+for epoch in range(num_epochs):
+       for i, (images, labels) in enumerate(trainDataLoader):
+              images = images.reshape(-1, 32*32).to(device)
+              
+
+
+
+
+"""n_total_steps = len(train_loader)
+
+for epoch in range(num_epochs):
+    for i, (images, labels) in enumerate(train_loader):
+        images = images.reshape(-1, 28*28).to(device)
+        labels = labels.to(device)
+
+        #forward pass
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+        #backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        if (i+1) % 100 == 0:
+            print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{n_total_steps}, loss = {loss.item():.3f}')"""
