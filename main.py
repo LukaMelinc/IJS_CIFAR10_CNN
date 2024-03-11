@@ -23,9 +23,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # hyperparameters
 num_epochs = 10
 lr = 0.01
-num_layers = 0
-imput_size = 0
-hidden_size = 0
+#num_layers = 0
+#imput_size = 0
+#hidden_size = 0
 num_classes = 10 # number of classes in CIFAR10
 num_channels = 3 # it is a colour image(RGB), so 3 classes, if grayscale image -> num_channels = 1
 momentum = 0.9
@@ -67,17 +67,17 @@ class CNN(Module):
 		super(CNN, self).__init__()
 		# first set CONV -> RELU -> POOL
 		self.conv1 = Conv2d(in_channels=num_channels, out_channels=20,kernel_size=(5, 5)) # conv layer
-		self.relu1 = ReLU() #relu activation
+		self.relu1 = F.ReLU() #relu activation
 		self.maxpool1 = MaxPool2d(kernel_size=(2, 2), stride=(2, 2)) # pooling layer
 		
         # second set CONV -> RELU -> POOL
 		self.conv2 = Conv2d(in_channels=20, out_channels=50,kernel_size=(5, 5)) # conv layer 2
-		self.relu2 = ReLU() # relu layer 
+		self.relu2 = F.ReLU() # relu layer 
 		self.maxpool2 = MaxPool2d(kernel_size=(2, 2), stride=(2, 2)) #pooling layer 2
 		
         # first and second fully connected layer with ReLU
 		self.fc1 = Linear(in_features=800, out_features=500) # fully connected layer 
-		self.relu3 = ReLU()
+		self.relu3 = F.ReLU()
 		self.fc2 = Linear(in_features=500, out_features=num_classes) # fully connected layer 2
 		self.logSoftmax = LogSoftmax(dim=1) # softmax activation function"""
 		
@@ -119,25 +119,14 @@ num_steps = len(trainDataLoader)
 for epoch in range(num_epochs):
        for i, (images, labels) in enumerate(trainDataLoader):
               images = images.reshape(-1, 32*32).to(device)
+              labels = labels.to(device)
               
-
-
-
-
-"""n_total_steps = len(train_loader)
-
-for epoch in range(num_epochs):
-    for i, (images, labels) in enumerate(train_loader):
-        images = images.reshape(-1, 28*28).to(device)
-        labels = labels.to(device)
-
-        #forward pass
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-        #backward pass
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        if (i+1) % 100 == 0:
-            print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{n_total_steps}, loss = {loss.item():.3f}')"""
+			  # forward pass
+              output = model(images)
+              loss = criterion(output)
+              # backward pass
+              optimizer.zero_grad()
+              loss.backward()
+              optimizer.step()
+              if (i+1) % 100 == 0:
+           	  	print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}')
