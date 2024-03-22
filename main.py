@@ -94,7 +94,9 @@ class CNN(Module):
         # first and second fully connected layer with ReLU
 		self.fc1 = Linear(in_features=75, out_features=75) # fully connected layer 
 		self.relu3 = ReLU()
-		self.fc2 = Linear(in_features=75, out_features=num_classes) # fully connected layer 2
+		self.fc2 = Linear(in_features=75, out_features=75) # fully connected layer 2
+		self.relu4 = ReLU()
+		self.fc3 = Linear(in_features=75, out_features=num_classes) # fully connected layer 3
 		self.logSoftmax = LogSoftmax(dim=1) # softmax activation function
 		
 	def forward(self, x):  # x represents a batch of input data flowing trough the network
@@ -117,6 +119,10 @@ class CNN(Module):
 			
 			# pass through the softmax classifier
 			x = self.fc2(x)
+			x = self.relu4(x)
+			
+			# pass through the softmax classifier
+			x = self.fc3(x)
 			output = self.logSoftmax(x)
 			
 			return output
