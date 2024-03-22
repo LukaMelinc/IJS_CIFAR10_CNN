@@ -76,13 +76,25 @@ class CNN(Module):
 		self.relu2 = ReLU() # relu layer 
 		self.maxpool2 = MaxPool2d(kernel_size=(2, 2), stride=(2, 2)) #pooling layer 2
 		
+		# Cifar stars with 3 x 32 x 32 dimensions (channels x width x height)
 
+		# calculating in_features after conv and pool layers
+		# conv layer impact
+		# output size = (Inputsize - filter size(kernel size) + 2 * padding)/stride + 1
+		# default for padding and stride are 0 and 1
 
+		# 32x32 -> 28x28 as (32 - 5 + 1) = 28
+
+		# pooling layer impact
+		# output size = (input_size - pooling_size + 2 * padding)/stride + 1
+		# pooling_size = 2(2x2), padding = 0, stride = 2
+
+		# in_features = 5 x 5 x c; c = num_channels (RGB = 3, gray = 1)
 
         # first and second fully connected layer with ReLU
-		self.fc1 = Linear(in_features=75, out_features=500) # fully connected layer 
+		self.fc1 = Linear(in_features=75, out_features=75) # fully connected layer 
 		self.relu3 = ReLU()
-		self.fc2 = Linear(in_features=500, out_features=num_classes) # fully connected layer 2
+		self.fc2 = Linear(in_features=75, out_features=num_classes) # fully connected layer 2
 		self.logSoftmax = LogSoftmax(dim=1) # softmax activation function
 		
 	def forward(self, x):  # x represents a batch of input data flowing trough the network
