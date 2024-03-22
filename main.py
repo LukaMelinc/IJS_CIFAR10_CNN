@@ -24,7 +24,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # hyperparameters
 num_epochs = 10
-lr = 0.01
+lr = 0.001
 
 num_classes = 10 # number of classes in CIFAR10
 num_channels = 3 # it is a colour image(RGB), so 3 classes, if grayscale image -> num_channels = 1
@@ -125,7 +125,7 @@ class CNN(Module):
 print("Start model CNN")
 # defining the training model
 model = CNN(num_channels, num_classes)
-optimizer = torch.optim.SGD(model.parameters(), lr, momentum)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
 criterion = nn.CrossEntropyLoss()
 
 #initialize training
@@ -145,3 +145,8 @@ for epoch in range(num_epochs):
               optimizer.step()
               if (i+1) % 100 == 0:
            	  	print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}')
+
+# fixes
+# lr scheduler
+# more conv,pool, fc layers
+# batch normalisation
