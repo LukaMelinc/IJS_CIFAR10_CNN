@@ -25,9 +25,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # hyperparameters
 num_epochs = 10
 lr = 0.01
-#num_layers = 0
-#imput_size = 0
-#hidden_size = 0
+
 num_classes = 10 # number of classes in CIFAR10
 num_channels = 3 # it is a colour image(RGB), so 3 classes, if grayscale image -> num_channels = 1
 momentum = 0.9
@@ -49,8 +47,7 @@ testStep = len(testDataLoader.dataset)
     plt.imshow(cifar_testset[i][0], cmap= 'gray')
 plt.show()"""
 
-# conv2d definition
-# torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros', device=None, dtype=None)
+
 
 
 
@@ -79,16 +76,14 @@ class CNN(Module):
 		self.relu2 = ReLU() # relu layer 
 		self.maxpool2 = MaxPool2d(kernel_size=(2, 2), stride=(2, 2)) #pooling layer 2
 		
-		#the last conv layer has 50 output channels, the final feature map = 5x5
-		# 50 * 5 * 5 = 1250 -> goes to in_features in the first fc layer
-		# out and in features of consecutive layers must match
+
 
 
         # first and second fully connected layer with ReLU
 		self.fc1 = Linear(in_features=75, out_features=500) # fully connected layer 
 		self.relu3 = ReLU()
 		self.fc2 = Linear(in_features=500, out_features=num_classes) # fully connected layer 2
-		self.logSoftmax = LogSoftmax(dim=1) # softmax activation function"""
+		self.logSoftmax = LogSoftmax(dim=1) # softmax activation function
 		
 	def forward(self, x):  # x represents a batch of input data flowing trough the network
 			# pass through the first set
