@@ -16,8 +16,8 @@ from torch.utils.data import DataLoader, Dataset
 
 
 
-cifar_trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transforms.ToTensor()) # Transform ToTensor() 
-cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transforms.ToTensor()) # Transform ToTensor()
+cifar_trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transforms.ToTensor())  
+cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transforms.ToTensor()) 
 
 # train on GPU, if CUDA is available, else train on CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  
@@ -85,7 +85,7 @@ class CNN(Module):
 
 
         # first and second fully connected layer with ReLU
-		self.fc1 = Linear(in_features=1250, out_features=500) # fully connected layer 
+		self.fc1 = Linear(in_features=75, out_features=500) # fully connected layer 
 		self.relu3 = ReLU()
 		self.fc2 = Linear(in_features=500, out_features=num_classes) # fully connected layer 2
 		self.logSoftmax = LogSoftmax(dim=1) # softmax activation function"""
@@ -131,7 +131,7 @@ for epoch in range(num_epochs):
               
 			  # forward pass
               output = model(images)
-              loss = criterion(output)
+              loss = criterion(output, labels)
               # backward pass
               optimizer.zero_grad()
               loss.backward()
