@@ -49,6 +49,25 @@ plt.show()"""
 
 
 
+def test(model, testDataLoader, device):
+
+    model.eval()  
+    pravilni = 0
+    vsi = 0
+
+   # with torch.no_grad():  # Izključi izračun gradientov za hitrejše izvajanje
+    for images, labels in testDataLoader:
+       #images = images.reshape(-1, 32*32).to(device) # pretvori v 1D tenzor, kar pa v resnici ne želimo, konv sloji želijo več dimenzionalne podatke
+        labels = labels.to(device)
+        outputs = model(images)
+        _, predicted = torch.max(outputs.data, 1)
+        vsi += labels.size(0)
+        pravilni += (predicted == labels).sum().item()
+    
+    acc = 100 * pravilni / vsi
+    return acc
+
+
 
 
 """def adding_padding(image):
@@ -152,7 +171,13 @@ for epoch in range(num_epochs):
               if (i+1) % 100 == 0:
            	  	print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}')
 
+
+natančnost = test(model, testDataLoader, device)
+print(f'Natančnost: {natančnost:.2f} %')
+
+
 # fixes
 # lr scheduler
 # more conv,pool, fc layers
 # batch normalisation
+# bad precision
