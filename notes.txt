@@ -1,0 +1,6 @@
+Notes tha are usefull for the purpose of this project
+
+Batch normalization
+Normalizacija vhodov v vsakem layerju v mreži
+Internal covariate shift (check it)
+Normira vhodne podatke glede na mini batch da odšteje povprečje serije in deli s standardno deviacijo

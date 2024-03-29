@@ -12,10 +12,6 @@ from torch.nn import Module, Conv2d, Linear
 from torchvision import transforms, datasets, models
 from torch.utils.data import DataLoader, Dataset
 
-
-
-
-
 cifar_trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transforms.ToTensor())  
 cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transforms.ToTensor()) 
 
@@ -31,7 +27,6 @@ num_channels = 3 # it is a colour image(RGB), so 3 classes, if grayscale image -
 momentum = 0.9
 BATCH_SIZE = 32
 
-
 # init data loaders
 
 trainDataLoader = DataLoader(cifar_trainset, shuffle=True, batch_size=BATCH_SIZE)
@@ -46,8 +41,6 @@ testStep = len(testDataLoader.dataset)
     plt.subplot(2,3,i+1)
     plt.imshow(cifar_testset[i][0], cmap= 'gray')
 plt.show()"""
-
-
 
 def test(model, testDataLoader, device):
 
@@ -66,9 +59,6 @@ def test(model, testDataLoader, device):
     
     acc = 100 * pravilni / vsi
     return acc
-
-
-
 
 """def adding_padding(image):
     #function for adding padding to images for convolution
@@ -146,7 +136,6 @@ class CNN(Module):
 			
 			return output
 
-
 print("Start model CNN")
 # defining the training model
 model = CNN(num_channels, num_classes)
@@ -171,10 +160,8 @@ for epoch in range(num_epochs):
               if (i+1) % 100 == 0:
            	  	print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}')
 
-
 natančnost = test(model, testDataLoader, device)
 print(f'Natančnost: {natančnost:.2f} %')
-
 
 # fixes
 # lr scheduler
