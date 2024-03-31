@@ -1,6 +1,45 @@
 Notes tha are usefull for the purpose of this project
 
-Batch normalization
+    Batch normalization
+
 Normalizacija vhodov v vsakem layerju v mreži
 Internal covariate shift (check it)
 Normira vhodne podatke glede na mini batch da odšteje povprečje serije in deli s standardno deviacijo
+batch normalization is usually added after convolutional layers, but before activation function
+
+#Cifar stars with 3 x 32 x 32 dimensions (channels x width x height)
+
+# calculating in_features after conv and pool layers
+# conv layer impact
+# output size = (Inputsize - filter size(kernel size) + 2 * padding)/stride + 1
+# default for padding and stride are 0 and 1
+
+# 32x32 -> 28x28 as (32 - 5 + 1) = 28
+
+# pooling layer impact
+# output size = (input_size - pooling_size + 2 * padding)/stride + 1
+# pooling_size = 2(2x2), padding = 0, stride = 2
+
+# in_features = 5 x 5 x c; c = num_channels (RGB = 3, gray = 1)
+
+    Layers fusing
+Fusing layers in the context of neural networks refers to the process of combining multiple 
+layers into a single layer or operation for the purpose of optimization. This technique can lead to 
+significant improvements in the efficiency of a neural network, both in terms of inference speed 
+and memory usage. The idea behind fusing layers is to reduce the computational overhead and memory 
+footprint by minimizing the number of separate operations that need to be performed.
+
+Convolution and Batch Normalization Fusion: A common example of layer fusion is the combination 
+of a convolutional layer and a subsequent batch normalization layer. During the training phase, 
+batch normalization applies scaling and shifting transformations to the output of the convolutional 
+layer to standardize the inputs to the next layer. These operations can be mathematically combined 
+into the convolution operation itself by adjusting the weights and biases, resulting in a single fused 
+convolution layer that incorporates the effects of batch normalization. This can significantly 
+reduce inference time since it eliminates the need to perform separate batch normalization computations 
+during inference.
+
+Fusing layers is primarily an optimization technique for reducing computational overhead and memory usage 
+during inference, rather than a method for improving the accuracy of a model. The goal of fusing layers 
+is to make a neural network run faster and more efficiently, especially on specific hardware or deployment 
+environments, without affecting the model's output or accuracy.
+
