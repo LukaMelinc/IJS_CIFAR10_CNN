@@ -48,7 +48,7 @@ testStep = len(testDataLoader.dataset)
     plt.imshow(cifar_testset[i][0], cmap= 'gray')
 plt.show()"""
 
-def test(model, testDataLoader, device):
+def test(model, testDataLoader, device):	# test function for testing accuracy
 
     model.eval()  
     pravilni = 0
@@ -84,12 +84,12 @@ class CNN(Module):
 		super(CNN, self).__init__()
 		# first set CONV -> RELU -> POOL
 		self.conv1 = Conv2d(in_channels=num_channels, out_channels=16, kernel_size=(5, 5))
-		self.bn1 = nn.BatchNorm2d(num_features=16)  # Corrected the argument here
+		self.bn1 = nn.BatchNorm2d(num_features=16)  # batch normalzation layer
 		self.relu1 = ReLU()
 		self.maxpool1 = MaxPool2d(kernel_size=(2, 2), stride=(2, 2))
 		# second set CONV -> BatchNorm -> RELU -> POOL
 		self.conv2 = Conv2d(in_channels=16, out_channels=32, kernel_size=(5, 5))
-		self.bn2 = nn.BatchNorm2d(num_features=32)  # Ensure this matches the output channels of conv2
+		self.bn2 = nn.BatchNorm2d(num_features=32)  
 		self.relu2 = ReLU()
 		self.maxpool2 = MaxPool2d(kernel_size=(2, 2), stride=(2, 2))
 		# first and second fully connected layer with ReLU
@@ -135,7 +135,7 @@ print("Start model CNN")
 model = CNN(num_channels, num_classes)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
 criterion = nn.CrossEntropyLoss()
-scheduler = StepLR(optimizer, step_size=2, gamma=0.1)	# reduce learning rate by gamma every step_size epochs
+#scheduler = StepLR(optimizer, step_size=2, gamma=0.1)	# reduce learning rate by gamma every step_size epochs
 num_steps = len(trainDataLoader)
 #initialize training
 writer.add_graph(model, sample_inputs)
@@ -151,7 +151,7 @@ for epoch in range(num_epochs):
               optimizer.zero_grad()
               loss.backward()
               optimizer.step()
-              scheduler.step()
+              #scheduler.step()
               writer.add_scalar('Loss/train', loss, epoch)
          
               
