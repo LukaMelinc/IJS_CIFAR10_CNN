@@ -6,15 +6,22 @@ import torch.nn as nn
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import numpy
+import sys
 from torch.nn import ReLU, MaxPool2d, LogSoftmax
 from torch.nn import Module, Conv2d, Linear
 from torchvision import transforms, datasets, models
 from torch.utils.data import DataLoader, Dataset
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
+from torch.utils.tensorboard import SummaryWriter
+
+writer = SummaryWriter("runs/CIFAR")
 
 cifar_trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transforms.ToTensor())  
 cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transforms.ToTensor()) 
+
+
+
 
 # train on GPU, if CUDA is available, else train on CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  
@@ -26,6 +33,9 @@ num_classes = 10 # number of classes in CIFAR10
 num_channels = 3 # it is a colour image(RGB), so 3 classes, if grayscale image -> num_channels = 1
 momentum = 0.9
 BATCH_SIZE = 32
+
+sample_inputs = torch.rand((1, num_channels, 32, 32))  # Adjust the size as per your model's input
+
 
 # init data loaders
 trainDataLoader = DataLoader(cifar_trainset, shuffle=True, batch_size=BATCH_SIZE)
@@ -52,6 +62,7 @@ def test(model, testDataLoader, device):
         _, predicted = torch.max(outputs.data, 1)
         vsi += labels.size(0)
         pravilni += (predicted == labels).sum().item()
+        
     
     acc = 100 * pravilni / vsi
     return acc
@@ -122,11 +133,12 @@ class CNN(Module):
 print("Start model CNN")
 # defining the training model
 model = CNN(num_channels, num_classes)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
 criterion = nn.CrossEntropyLoss()
-scheduler = StepLR(optimizer, step_size=2, gamma=0.3)	# reduce learning rate by gamma every step_size epochs
+scheduler = StepLR(optimizer, step_size=2, gamma=0.1)	# reduce learning rate by gamma every step_size epochs
 num_steps = len(trainDataLoader)
 #initialize training
+writer.add_graph(model, sample_inputs)
 
 for epoch in range(num_epochs):
        for i, (images, labels) in enumerate(trainDataLoader):
@@ -140,10 +152,15 @@ for epoch in range(num_epochs):
               loss.backward()
               optimizer.step()
               scheduler.step()
+              writer.add_scalar('Loss/train', loss, epoch)
+         
+              
               if (i+1) % 100 == 0:
            	  	print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}')
 
 natančnost = test(model, testDataLoader, device)
 print(f'Natančnost: {natančnost:.2f} %')
+writer.close()
 
-# lr scheduler
+# dropout layers before fully connected layers to prevent overfitting
+# weight decay
