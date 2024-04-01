@@ -1,11 +1,22 @@
 Notes tha are usefull for the purpose of this project
 
+    How to calculate the number of features for certain layers
+
+
+
     Batch normalization
 
 Normalizacija vhodov v vsakem layerju v mreži
 Internal covariate shift (check it)
 Normira vhodne podatke glede na mini batch da odšteje povprečje serije in deli s standardno deviacijo
 batch normalization is usually added after convolutional layers, but before activation function
+
+alternatives are Group Normalization, Layer Normalization, which are usefull for training with 
+smaller batch sizes.
+Pooling layers reduce the spatial dimensions (width, height) of the input feature map but do not 
+change the number of feature map (channels), it remains the same before and after a pooling layer.
+
+    feature calculation
 
 #Cifar stars with 3 x 32 x 32 dimensions (channels x width x height)
 
@@ -43,3 +54,30 @@ during inference, rather than a method for improving the accuracy of a model. Th
 is to make a neural network run faster and more efficiently, especially on specific hardware or deployment 
 environments, without affecting the model's output or accuracy.
 
+    Residual connections
+
+Residual connections, also known as skip connections, were introduced to help solve the problem of vanishing 
+gradients in very deep neural networks. This problem occurs when gradients, during the backpropagation phase, 
+become increasingly smaller as they are propagated back through the layers. This makes it difficult to train 
+deep networks effectively.
+
+A residual connection allows the output of one layer to be added to the output of a layer further ahead in 
+the network. Essentially, it skips one or more layers and performs an element-wise addition operation on the 
+outputs of the skipped layers and the layer where the skip ends.
+
+The core idea behind residual connections is simple: instead of trying to learn an entirely new representation 
+at each layer, the network learns modifications to the identity of the previous layer. This makes it easier 
+to train very deep networks because it mitigates the vanishing gradient problem by providing a direct pathway 
+for gradients to flow through.
+
+    Attention Mechanisms
+
+The concept of attention mechanisms in machine learning, particularly in deep learning, was inspired by the 
+way humans focus on different parts of an image or sequence when processing information. In machine learning, 
+attention mechanisms allow models to dynamically focus on certain parts of the input data over others, 
+which is especially useful in tasks that involve sequences such as language translation or speech recognition.
+
+In its essence, an attention mechanism weights the importance of different input parts when constructing an 
+output part. For example, in sequence-to-sequence models (like those used in machine translation), the 
+attention mechanism can help the model to focus on the relevant parts of the input sentence when translating 
+a specific word or phrase.
