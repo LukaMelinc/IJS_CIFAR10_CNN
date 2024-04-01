@@ -103,11 +103,11 @@ class CNN(Module):
         # spatial dimension after three conv layers with kernel size 4 and stride 1 equals 2
               
 		# first and second fully connected layer with ReLU
-		self.fc1 = Linear(in_features=240, out_features=120) # fully connected layer 
+		self.fc1 = Linear(in_features=240, out_features=500) # fully connected layer 
 		self.relu4 = ReLU()
-		self.fc2 = Linear(in_features=120, out_features=84) # fully connected layer 2
+		self.fc2 = Linear(in_features=500, out_features=500) # fully connected layer 2
 		self.relu5 = ReLU()
-		self.fc3 = Linear(in_features=84, out_features=num_classes) # fully connected layer 3
+		self.fc3 = Linear(in_features=500, out_features=num_classes) # fully connected layer 3
               # outfeatures must be num_classes as it calculates the right class
 		self.logSoftmax = LogSoftmax(dim=1) # softmax activation function
 		
