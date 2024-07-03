@@ -97,31 +97,31 @@ class CNN(Module):
 	def __init__(self, num_channels, num_classes):
 		super(CNN, self).__init__()
 		# first set CONV -> RELU -> POOL
-		self.conv1 = Conv2d(in_channels=num_channels, out_channels=15, kernel_size=(5, 5), stride=1, padding=0)
-		self.bn1 = nn.BatchNorm2d(num_features=15)  # batch normalzation layer
+		self.conv1 = Conv2d(in_channels=num_channels, out_channels=20, kernel_size=(5, 5), stride=1, padding=0)
+		self.bn1 = nn.BatchNorm2d(num_features=20)  # batch normalzation layer
 		self.relu1 = ReLU()
 		self.maxpool1 = MaxPool2d(kernel_size=(2, 2), stride=(2, 2))
 				
 		# second set CONV -> BatchNorm -> RELU -> POOL
-		self.conv2 = Conv2d(in_channels=15, out_channels=30, kernel_size=(3, 3), stride=1, padding=0)
-		self.bn2 = nn.BatchNorm2d(num_features=30)  
+		self.conv2 = Conv2d(in_channels=20, out_channels=40, kernel_size=(3, 3), stride=1, padding=0)
+		self.bn2 = nn.BatchNorm2d(num_features=40)  
 		self.relu2 = ReLU()
 		self.maxpool2 = MaxPool2d(kernel_size=(2, 2), stride=(2, 2))
 				
 		# third set
-		self.conv3 = Conv2d(in_channels=30, out_channels=60, kernel_size=(3, 3), stride=1, padding=0)
-		self.bn3 = nn.BatchNorm2d(num_features=60)  
+		self.conv3 = Conv2d(in_channels=40, out_channels=80, kernel_size=(3, 3), stride=1, padding=0)
+		self.bn3 = nn.BatchNorm2d(num_features=80)  
 		self.relu3 = ReLU()
 		self.maxpool3 = MaxPool2d(kernel_size=(2, 2), stride=(2, 2))
               
         # spatial dimension after three conv layers with kernel size 4 and stride 1 equals 2
               
 		# first and second fully connected layer with ReLU
-		self.fc1 = Linear(in_features=240, out_features=240) # fully connected layer 
+		self.fc1 = Linear(in_features=320, out_features=320) # fully connected layer 
 		self.relu4 = ReLU()
-		self.fc2 = Linear(in_features=240, out_features=240) # fully connected layer 2
+		self.fc2 = Linear(in_features=320, out_features=320) # fully connected layer 2
 		self.relu5 = ReLU()
-		self.fc3 = Linear(in_features=240, out_features=num_classes) # fully connected layer 3
+		self.fc3 = Linear(in_features=320, out_features=num_classes) # fully connected layer 3
               # outfeatures must be num_classes as it calculates the right class
 		self.logSoftmax = LogSoftmax(dim=1) # softmax activation function
 		
