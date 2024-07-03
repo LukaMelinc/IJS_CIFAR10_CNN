@@ -14,21 +14,12 @@ from torch.utils.data import DataLoader, Dataset
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.tensorboard import SummaryWriter
+import datetime
 
-writer = SummaryWriter("runs/CIFAR")
-
-cifar_trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transforms.ToTensor())  
-cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transforms.ToTensor()) 
-
-
-
-
-# train on GPU, if CUDA is available, else train on CPU
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  
 
 # hyperparameters
-num_epochs = 10
-learning_rate = 0.001
+num_epochs = 15
+learning_rate = 0.0005
 num_classes = 10 # number of classes in CIFAR10
 num_channels = 3 # it is a colour image(RGB), so 3 classes, if grayscale image -> num_channels = 1
 momentum = 0.9
@@ -36,6 +27,24 @@ BATCH_SIZE = 32
 
 sample_inputs = torch.rand((1, num_channels, 32, 32))  # Adjust the size as per your model's input
 
+# Define the transform pipeline with data augmentation for the training dataset
+train_transform = transforms.Compose([
+    transforms.RandomHorizontalFlip(),  # Randomly flip the image horizontally
+    transforms.RandomCrop(32, padding=4),  # Randomly crop the image with padding
+    transforms.ToTensor(),  # Convert the image to a tensor
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))  # Normalize the image
+])
+
+# Define the transform pipeline for the test dataset (no augmentation)
+test_transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+])
+
+writer = SummaryWriter("runs/CIFAR")
+
+cifar_trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)  
+cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform) 
 
 # init data loaders
 trainDataLoader = DataLoader(cifar_trainset, shuffle=True, batch_size=BATCH_SIZE)
@@ -43,10 +52,15 @@ testDataLoader = DataLoader(cifar_testset, batch_size=BATCH_SIZE)
 trainStep = len(trainDataLoader.dataset)
 testStep = len(testDataLoader.dataset)
 
-"""for i in range(6):
-    plt.subplot(2,3,i+1)
-    plt.imshow(cifar_testset[i][0], cmap= 'gray')
-plt.show()"""
+
+
+# train on GPU, if CUDA is available, else train on CPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  
+
+
+
+
+
 
 def test(model, testDataLoader, device):	# test function for testing accuracy
 
@@ -103,11 +117,11 @@ class CNN(Module):
         # spatial dimension after three conv layers with kernel size 4 and stride 1 equals 2
               
 		# first and second fully connected layer with ReLU
-		self.fc1 = Linear(in_features=240, out_features=500) # fully connected layer 
+		self.fc1 = Linear(in_features=240, out_features=240) # fully connected layer 
 		self.relu4 = ReLU()
-		self.fc2 = Linear(in_features=500, out_features=500) # fully connected layer 2
+		self.fc2 = Linear(in_features=240, out_features=240) # fully connected layer 2
 		self.relu5 = ReLU()
-		self.fc3 = Linear(in_features=500, out_features=num_classes) # fully connected layer 3
+		self.fc3 = Linear(in_features=240, out_features=num_classes) # fully connected layer 3
               # outfeatures must be num_classes as it calculates the right class
 		self.logSoftmax = LogSoftmax(dim=1) # softmax activation function
 		
@@ -177,7 +191,8 @@ for epoch in range(num_epochs):
            	  	print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}')
 
 natančnost = test(model, testDataLoader, device)
-print(f'Natančnost: {natančnost:.2f} %')
+now = datetime.datetime.now()
+print(f'Natančnost: {natančnost:.2f} %, {now}')
 writer.close()
 
 # dropout layers before fully connected layers to prevent overfitting
