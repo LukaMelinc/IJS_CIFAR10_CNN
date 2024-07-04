@@ -1,3 +1,4 @@
+
 import torch
 from torch import flatten
 import torchvision
@@ -18,7 +19,7 @@ import datetime
 
 
 # hyperparameters
-num_epochs = 15
+num_epochs = 20
 learning_rate = 0.0005
 num_classes = 10 # number of classes in CIFAR10
 num_channels = 3 # it is a colour image(RGB), so 3 classes, if grayscale image -> num_channels = 1
@@ -74,16 +75,7 @@ def test(model, testDataLoader, device):	# test function for testing accuracy
     acc = 100 * pravilni / vsi
     return acc
 
-"""def adding_padding(image):
-    #function for adding padding to images for convolution
-    transform_to_tensor = transforms.ToTensor()
-    image_original = image
-    image_tensor = transform_to_tensor(image_original)
-    padded_image_tensor = F.pad(image_tensor, (2, 2, 2, 2), mode='constant', value=0)
 
-    plt.imshow(padded_image_tensor.permute(1, 2, 0))  # Adjusting the channel dimension for matplotlib
-    plt.show()
-    return padded_image_tensor"""
 
 # basic layer structure
 class CNN(Module):
@@ -154,6 +146,7 @@ class CNN(Module):
 		output = self.logSoftmax(x)
 		
 		return output
+       
 start_time = datetime.datetime.now()
 print("Start model CNN, training started at:", {start_time})
 # defining the training model
@@ -166,7 +159,6 @@ num_steps = len(trainDataLoader)
 writer.add_graph(model, sample_inputs.to(device)) # s sample_inputs.to(device) lahko sledimo, kako se vrednosti spreminjajo v modelu
 
 
-writer.add_hparams()
 for epoch in range(num_epochs):
        losses = []
        acc = []
@@ -176,30 +168,28 @@ for epoch in range(num_epochs):
 			  # forward pass
               output = model(images)
               loss = criterion(output, labels)
-              writer.add_scalar('Loss/train', loss, epoch+1)
+              writer.add_scalar('Loss/train', loss, epoch*num_steps+1)
               # backward pass
               optimizer.zero_grad()
               loss.backward()
               optimizer.step()
               #scheduler.step()
-              writer.add_scalar(learning_rate)
+              writer.add_scalar("lr", learning_rate, epoch*num_steps+1)
               
               
 			  # sprotno računanje natančnosti
               _, napovedi = output.max(1)
               stevilo_pravilnih = (napovedi == labels).sum()
               sprotni_acc = float(stevilo_pravilnih) / float(images.shape[0])
-              writer.add_scalar('Sprotna natančnost', sprotni_acc)
+              writer.add_scalar('Sprotna natančnost', sprotni_acc, epoch * num_steps + i)
               acc.append(sprotni_acc)
-              writer.add_hparams(
-                     {"lr": learning_rate, "bs": BATCH_SIZE},
-                     {"accuracy": sum(acc)/len(acc), "loss": sum(loss)/len(loss)}
-			  )
+              losses.append(loss.item())
+              
               
               if (i+1) % 100 == 0:
            	  	print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}, acc = {sprotni_acc}')
-     		
-
+	
+     	
 natančnost = test(model, testDataLoader, device)
 now = datetime.datetime.now()
 print(f'Natančnost: {natančnost:.2f} %, training ended at: {now}')
