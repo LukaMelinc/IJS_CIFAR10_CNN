@@ -52,15 +52,8 @@ testDataLoader = DataLoader(cifar_testset, batch_size=BATCH_SIZE)
 trainStep = len(trainDataLoader.dataset)
 testStep = len(testDataLoader.dataset)
 
-
-
 # train on GPU, if CUDA is available, else train on CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  
-
-
-
-
-
 
 def test(model, testDataLoader, device):	# test function for testing accuracy
 
@@ -161,8 +154,8 @@ class CNN(Module):
 		output = self.logSoftmax(x)
 		
 		return output
-
-print("Start model CNN")
+start_time = datetime.datetime.now()
+print("Start model CNN, training started at:", {start_time})
 # defining the training model
 model = CNN(num_channels, num_classes)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
@@ -170,29 +163,46 @@ criterion = nn.CrossEntropyLoss()
 #scheduler = StepLR(optimizer, step_size=2, gamma=0.1)	# reduce learning rate by gamma every step_size epochs
 num_steps = len(trainDataLoader)
 #initialize training
-writer.add_graph(model, sample_inputs)
+writer.add_graph(model, sample_inputs.to(device)) # s sample_inputs.to(device) lahko sledimo, kako se vrednosti spreminjajo v modelu
 
+
+writer.add_hparams()
 for epoch in range(num_epochs):
+       losses = []
+       acc = []
        for i, (images, labels) in enumerate(trainDataLoader):
               labels = labels.to(device)
               
 			  # forward pass
               output = model(images)
               loss = criterion(output, labels)
+              writer.add_scalar('Loss/train', loss, epoch+1)
               # backward pass
               optimizer.zero_grad()
               loss.backward()
               optimizer.step()
               #scheduler.step()
-              writer.add_scalar('Loss/train', loss, epoch)
-         
+              writer.add_scalar(learning_rate)
+              
+              
+			  # sprotno računanje natančnosti
+              _, napovedi = output.max(1)
+              stevilo_pravilnih = (napovedi == labels).sum()
+              sprotni_acc = float(stevilo_pravilnih) / float(images.shape[0])
+              writer.add_scalar('Sprotna natančnost', sprotni_acc)
+              acc.append(sprotni_acc)
+              writer.add_hparams(
+                     {"lr": learning_rate, "bs": BATCH_SIZE},
+                     {"accuracy": sum(acc)/len(acc), "loss": sum(loss)/len(loss)}
+			  )
               
               if (i+1) % 100 == 0:
-           	  	print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}')
+           	  	print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}, acc = {sprotni_acc}')
+     		
 
 natančnost = test(model, testDataLoader, device)
 now = datetime.datetime.now()
-print(f'Natančnost: {natančnost:.2f} %, {now}')
+print(f'Natančnost: {natančnost:.2f} %, training ended at: {now}')
 writer.close()
 
 # dropout layers before fully connected layers to prevent overfitting
