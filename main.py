@@ -19,12 +19,12 @@ import datetime
 
 
 # hyperparameters
-num_epochs = 20
-learning_rate = 0.0005
+num_epochs = 15
+learning_rate = 0.0009
 num_classes = 10 # number of classes in CIFAR10
 num_channels = 3 # it is a colour image(RGB), so 3 classes, if grayscale image -> num_channels = 1
 momentum = 0.9
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 
 sample_inputs = torch.rand((1, num_channels, 32, 32))  # Adjust the size as per your model's input
 
@@ -41,36 +41,39 @@ test_transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
 ])
+# Prestavitev procesov na GPU, če je navoljo
+torch.manual_seed(42)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(42)
+#torch.set_default_tensor_type(torch.cuda.FloatTensor)	# nastavimo defaultni tensor tip
+print(f'CUDA drivers are installed and ready: ',torch.cuda.is_available()) # preverimo, ali so Nvidia driverji pravilno nameščeni 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")	#če je GPU navoljo, treniramo na GPU
+
 
 writer = SummaryWriter("runs/CIFAR")
 
+
 cifar_trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)  
 cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform) 
-
 
 train_size = int(0.8 * len(cifar_trainset))
 val_size = len(cifar_trainset) - train_size
 train_dataset, val_dataset = random_split(cifar_trainset, [train_size, val_size])
 
-# init data loaders
-trainDataLoader = DataLoader(cifar_trainset, shuffle=True, batch_size=BATCH_SIZE)
+trainDataLoader = DataLoader(cifar_trainset, shuffle=True, batch_size=BATCH_SIZE, num_workers=6, pin_memory=True)
 testDataLoader = DataLoader(cifar_testset, batch_size=BATCH_SIZE)
 valDataLoader = DataLoader(val_dataset, batch_size=	BATCH_SIZE)
-
-
-# train on GPU, if CUDA is available, else train on CPU
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  
+ 
 
 def test(model, testDataLoader, device):	# test function for testing accuracy
-
-    model.eval()  
+    model.eval().to(device)  
     pravilni = 0
     vsi = 0
-
    # with torch.no_grad():  # Izključi izračun gradientov za hitrejše izvajanje
     for images, labels in testDataLoader:
-       #images = images.reshape(-1, 32*32).to(device) # pretvori v 1D tenzor, kar pa v resnici ne želimo, konv sloji želijo več dimenzionalne podatke
+		#images = images.reshape(-1, 32*32).to(device) # pretvori v 1D tenzor, kar pa v resnici ne želimo, konv sloji želijo več dimenzionalne podatke
         labels = labels.to(device)
+        images = images.to(device)
         outputs = model(images)
         _, predicted = torch.max(outputs.data, 1)
         vsi += labels.size(0)
@@ -152,36 +155,32 @@ class CNN(Module):
 		
 		return output
        
-now_1 = datetime.datetime.now()	   
-print("Start model CNN, training started at:", {now_1})# defining the training model
-
-model = CNN(num_channels, num_classes)
+print("Started training the model")
+model = CNN(num_channels, num_classes).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
-criterion = nn.CrossEntropyLoss()
-
-scheduler = StepLR(optimizer, step_size=1, gamma=0.1)	# reduce learning rate by gamma every step_size epochs
+criterion = nn.CrossEntropyLoss().to(device)
+#scheduler = StepLR(optimizer, step_size=2, gamma=0.5)	# reduce learning rate by gamma every step_size epochs
 #scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor = 0.01, total_iters=10)
-
 num_steps = len(trainDataLoader)
 #initialize training
 writer.add_graph(model, sample_inputs.to(device)) # s sample_inputs.to(device) lahko sledimo, kako se vrednosti spreminjajo v modelu
-
 
 for epoch in range(num_epochs):
 		losses = []
 		acc = []
 		for i, (images, labels) in enumerate(trainDataLoader):
 				labels = labels.to(device)
+				images = images.to(device)
+				#print(images.device)
 				
 				# forward pass
 				output = model(images)
 				loss = criterion(output, labels)
-				writer.add_scalar('Loss/train', loss, epoch*num_steps+1)
+				
 				# backward pass
 				optimizer.zero_grad()
 				loss.backward()
 				optimizer.step()
-				
 				
 				
 				# sprotno računanje natančnosti
@@ -191,23 +190,23 @@ for epoch in range(num_epochs):
 				writer.add_scalar('Sprotna natančnost', sprotni_acc, epoch * num_steps + i)
 				acc.append(sprotni_acc)
 				losses.append(loss.item())
-				
-				writer.add_scalar("lr", learning_rate, epoch*num_steps+1)
+				writer.add_scalar('Loss', loss, epoch*num_steps+1)
+				#writer.add_scalar("lr",scheduler.get_last_lr() , epoch*num_steps+1)
 				
 				if (i+1) % 100 == 0:
 					print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}, acc = {sprotni_acc}, lr ={scheduler.get_last_lr()}')
-					#print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}, acc = {sprotni_acc},')
+					#print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}, acc = {sprotni_acc}')
                            
 		val_accuracy = test(model, valDataLoader, device)
 		writer.add_scalar("Val acc", val_accuracy, epoch)
-		print(f'Validation score: {val_accuracy}')
-		scheduler.step()
+		natančnost = test(model, testDataLoader, device)
+		writer.add_scalar("Test acc", natančnost, epoch)
+		print(f'Validation score: {val_accuracy}, Test score: {natančnost}')
+		#scheduler.step()
 	
      	
 natančnost = test(model, testDataLoader, device)
 now = datetime.datetime.now()
-print(f'Natančnost: {natančnost:.2f} %, training ended at: {now}')
+formatted_now = now.strftime("%Y-%m-%d %H:%M:%S")
+print(f'Natančnost: {natančnost:.3f} %, training ended at: {formatted_now}')
 writer.close()
-
-# dropout layers before fully connected layers to prevent overfitting
-# weight decay
