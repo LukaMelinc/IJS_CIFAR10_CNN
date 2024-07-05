@@ -1,7 +1,5 @@
 Notes tha are usefull for the purpose of this project
 
-    How to calculate the number of features for certain layers
-
 
 
     Batch normalization
@@ -81,3 +79,6 @@ In its essence, an attention mechanism weights the importance of different input
 output part. For example, in sequence-to-sequence models (like those used in machine translation), the 
 attention mechanism can help the model to focus on the relevant parts of the input sentence when translating 
 a specific word or phrase.
+
+Learning rate: 0.1 je precej prevelik, slabi rezultati
+
