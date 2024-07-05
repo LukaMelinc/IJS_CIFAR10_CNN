@@ -11,7 +11,7 @@ import sys
 from torch.nn import ReLU, MaxPool2d, LogSoftmax
 from torch.nn import Module, Conv2d, Linear
 from torchvision import transforms, datasets, models
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, random_split
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.tensorboard import SummaryWriter
@@ -47,11 +47,16 @@ writer = SummaryWriter("runs/CIFAR")
 cifar_trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)  
 cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform) 
 
+
+train_size = int(0.8 * len(cifar_trainset))
+val_size = len(cifar_trainset) - train_size
+train_dataset, val_dataset = random_split(cifar_trainset, [train_size, val_size])
+
 # init data loaders
 trainDataLoader = DataLoader(cifar_trainset, shuffle=True, batch_size=BATCH_SIZE)
 testDataLoader = DataLoader(cifar_testset, batch_size=BATCH_SIZE)
-trainStep = len(trainDataLoader.dataset)
-testStep = len(testDataLoader.dataset)
+valDataLoader = DataLoader(val_dataset, batch_size=	BATCH_SIZE)
+
 
 # train on GPU, if CUDA is available, else train on CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  
@@ -147,47 +152,56 @@ class CNN(Module):
 		
 		return output
        
-start_time = datetime.datetime.now()
-print("Start model CNN, training started at:", {start_time})
-# defining the training model
+now_1 = datetime.datetime.now()	   
+print("Start model CNN, training started at:", {now_1})# defining the training model
+
 model = CNN(num_channels, num_classes)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
 criterion = nn.CrossEntropyLoss()
-#scheduler = StepLR(optimizer, step_size=2, gamma=0.1)	# reduce learning rate by gamma every step_size epochs
+
+scheduler = StepLR(optimizer, step_size=1, gamma=0.1)	# reduce learning rate by gamma every step_size epochs
+#scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor = 0.01, total_iters=10)
+
 num_steps = len(trainDataLoader)
 #initialize training
 writer.add_graph(model, sample_inputs.to(device)) # s sample_inputs.to(device) lahko sledimo, kako se vrednosti spreminjajo v modelu
 
 
 for epoch in range(num_epochs):
-       losses = []
-       acc = []
-       for i, (images, labels) in enumerate(trainDataLoader):
-              labels = labels.to(device)
-              
-			  # forward pass
-              output = model(images)
-              loss = criterion(output, labels)
-              writer.add_scalar('Loss/train', loss, epoch*num_steps+1)
-              # backward pass
-              optimizer.zero_grad()
-              loss.backward()
-              optimizer.step()
-              #scheduler.step()
-              writer.add_scalar("lr", learning_rate, epoch*num_steps+1)
-              
-              
-			  # sprotno računanje natančnosti
-              _, napovedi = output.max(1)
-              stevilo_pravilnih = (napovedi == labels).sum()
-              sprotni_acc = float(stevilo_pravilnih) / float(images.shape[0])
-              writer.add_scalar('Sprotna natančnost', sprotni_acc, epoch * num_steps + i)
-              acc.append(sprotni_acc)
-              losses.append(loss.item())
-              
-              
-              if (i+1) % 100 == 0:
-           	  	print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}, acc = {sprotni_acc}')
+		losses = []
+		acc = []
+		for i, (images, labels) in enumerate(trainDataLoader):
+				labels = labels.to(device)
+				
+				# forward pass
+				output = model(images)
+				loss = criterion(output, labels)
+				writer.add_scalar('Loss/train', loss, epoch*num_steps+1)
+				# backward pass
+				optimizer.zero_grad()
+				loss.backward()
+				optimizer.step()
+				
+				
+				
+				# sprotno računanje natančnosti
+				_, napovedi = output.max(1)
+				stevilo_pravilnih = (napovedi == labels).sum()
+				sprotni_acc = float(stevilo_pravilnih) / float(images.shape[0])
+				writer.add_scalar('Sprotna natančnost', sprotni_acc, epoch * num_steps + i)
+				acc.append(sprotni_acc)
+				losses.append(loss.item())
+				
+				writer.add_scalar("lr", learning_rate, epoch*num_steps+1)
+				
+				if (i+1) % 100 == 0:
+					print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}, acc = {sprotni_acc}, lr ={scheduler.get_last_lr()}')
+					#print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}, acc = {sprotni_acc},')
+                           
+		val_accuracy = test(model, valDataLoader, device)
+		writer.add_scalar("Val acc", val_accuracy, epoch)
+		print(f'Validation score: {val_accuracy}')
+		scheduler.step()
 	
      	
 natančnost = test(model, testDataLoader, device)
