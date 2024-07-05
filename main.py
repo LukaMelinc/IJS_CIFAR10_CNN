@@ -156,8 +156,12 @@ print("Started training the model")
 model = CNN(num_channels, num_classes).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
 criterion = nn.CrossEntropyLoss().to(device)
-scheduler = StepLR(optimizer, step_size=2, gamma=0.7)	# reduce learning rate by gamma every step_size epochs
+
+#scheduler = StepLR(optimizer, step_size=2, gamma=0.7)	# reduce learning rate by gamma every step_size epochs
 #scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor = 0.01, total_iters=10)
+#scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3, verbose=True)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs, eta_min=0.000001, last_epoch=15, verbose=True)
+
 num_steps = len(trainDataLoader)
 writer.add_graph(model, sample_inputs.to(device)) 
 
@@ -202,7 +206,8 @@ for epoch in range(num_epochs):
 	
      	
 natančnost = test(model, testDataLoader, device)
+validacija = test(model, valDataLoader, device)
 now = datetime.datetime.now()
 formatted_now = now.strftime("%Y-%m-%d %H:%M:%S")
-print(f'Natančnost: {natančnost:.3f} %, training ended at: {formatted_now}')
+print(f'Natančnost: {natančnost:.3f} %, Validacija: {validacija}  training ended at: {formatted_now}')
 writer.close()
