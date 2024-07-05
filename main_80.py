@@ -16,7 +16,7 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.tensorboard import SummaryWriter
 import datetime
 # hyperparameters
-num_epochs = 15
+num_epochs = 5
 learning_rate = 0.0001
 num_classes = 10 # number of classes in CIFAR10
 num_channels = 3 # it is a colour image(RGB), so 3 classes, if grayscale image -> num_channels = 1
@@ -36,17 +36,21 @@ test_transform = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
 ])
 
-torch.set_default_tensor_type(torch.FloatTensor)	# nastavimo defaultni tensor tip
+torch.manual_seed(42)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(42)
+
+#torch.set_default_tensor_type(torch.cuda.FloatTensor)	# nastavimo defaultni tensor tip
 print(torch.cuda.is_available()) # preverimo, ali so Nvidia driverji pravilno nameščeni 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")	#če je GPU navoljo, treniramo na GPU
-generator = torch.Generator(device='cuda')
+#generator = torch.Generator(device='cuda')
 
 writer = SummaryWriter("runs/CIFAR")
 cifar_trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)  
 cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform) 
 # init data loaders
-trainDataLoader = DataLoader(cifar_trainset, shuffle=True, batch_size=BATCH_SIZE,  num_workers=4, pin_memory=True)
-testDataLoader = DataLoader(cifar_testset, batch_size=BATCH_SIZE, num_workers=4, pin_memory=True)
+trainDataLoader = DataLoader(cifar_trainset, shuffle=True, batch_size=BATCH_SIZE, num_workers=4, pin_memory=True)
+testDataLoader = DataLoader(cifar_testset, batch_size=BATCH_SIZE)
 trainStep = len(trainDataLoader.dataset)
 testStep = len(testDataLoader.dataset)
 
@@ -56,13 +60,14 @@ testStep = len(testDataLoader.dataset)
 
 
 def test(model, testDataLoader, device):	# test function for testing accuracy
-    model.eval()  
+    model.eval().to(device)  
     pravilni = 0
     vsi = 0
    # with torch.no_grad():  # Izključi izračun gradientov za hitrejše izvajanje
     for images, labels in testDataLoader:
-       #images = images.reshape(-1, 32*32).to(device) # pretvori v 1D tenzor, kar pa v resnici ne želimo, konv sloji želijo več dimenzionalne podatke
+		#images = images.reshape(-1, 32*32).to(device) # pretvori v 1D tenzor, kar pa v resnici ne želimo, konv sloji želijo več dimenzionalne podatke
         labels = labels.to(device)
+        images = images.to(device)
         outputs = model(images)
         _, predicted = torch.max(outputs.data, 1)
         vsi += labels.size(0)
@@ -149,12 +154,12 @@ criterion = nn.CrossEntropyLoss().to(device)
 #scheduler = StepLR(optimizer, step_size=2, gamma=0.1)	# reduce learning rate by gamma every step_size epochs
 num_steps = len(trainDataLoader)
 #initialize training
-writer.add_graph(model, sample_inputs)
+#writer.add_graph(model, sample_inputs)
 for epoch in range(num_epochs):
        for i, (images, labels) in enumerate(trainDataLoader):
               labels = labels.to(device)
               images = images.to(device)
-              print(labels.device)
+              #print(labels.device)
               
 			  # forward pass
               output = model(images)
