@@ -1,4 +1,3 @@
-
 import torch
 from torch import flatten
 import torchvision
@@ -20,9 +19,9 @@ import datetime
 
 # hyperparameters
 num_epochs = 15
-learning_rate = 0.0009
-num_classes = 10 # number of classes in CIFAR10
-num_channels = 3 # it is a colour image(RGB), so 3 classes, if grayscale image -> num_channels = 1
+learning_rate = 0.001
+num_classes = 10 
+num_channels = 3 
 momentum = 0.9
 BATCH_SIZE = 64
 
@@ -91,7 +90,7 @@ class CNN(Module):
 		super(CNN, self).__init__()
 		# first set CONV -> RELU -> POOL
 		self.conv1 = Conv2d(in_channels=num_channels, out_channels=30, kernel_size=(5, 5), stride=1, padding=0)
-		self.bn1 = nn.BatchNorm2d(num_features=30)  # batch normalzation layer
+		self.bn1 = nn.BatchNorm2d(num_features=30) 
 		self.relu1 = ReLU()
 		self.maxpool1 = MaxPool2d(kernel_size=(2, 2), stride=(2, 2))
 				
@@ -106,8 +105,6 @@ class CNN(Module):
 		self.bn3 = nn.BatchNorm2d(num_features=120)  
 		self.relu3 = ReLU()
 		self.maxpool3 = MaxPool2d(kernel_size=(2, 2), stride=(2, 2))
-              
-        # spatial dimension after three conv layers with kernel size 4 and stride 1 equals 2
               
 		# first and second fully connected layer with ReLU
 		self.fc1 = Linear(in_features=480, out_features=480) # fully connected layer 
@@ -159,11 +156,10 @@ print("Started training the model")
 model = CNN(num_channels, num_classes).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
 criterion = nn.CrossEntropyLoss().to(device)
-#scheduler = StepLR(optimizer, step_size=2, gamma=0.5)	# reduce learning rate by gamma every step_size epochs
+scheduler = StepLR(optimizer, step_size=2, gamma=0.7)	# reduce learning rate by gamma every step_size epochs
 #scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor = 0.01, total_iters=10)
 num_steps = len(trainDataLoader)
-#initialize training
-writer.add_graph(model, sample_inputs.to(device)) # s sample_inputs.to(device) lahko sledimo, kako se vrednosti spreminjajo v modelu
+writer.add_graph(model, sample_inputs.to(device)) 
 
 for epoch in range(num_epochs):
 		losses = []
