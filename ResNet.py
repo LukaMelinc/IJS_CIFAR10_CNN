@@ -1,5 +1,6 @@
 # following an example from: https://blog.paperspace.com/writing-resnet-from-scratch-in-pytorch/
 
+# uvozimo in odpremo knjižnice
 import torch
 from torch import flatten
 import torchvision
@@ -19,15 +20,19 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.tensorboard import SummaryWriter
 import gc
 
-# hyperparameters
+# hiperparametri
 num_epochs = 20
 learning_rate = 0.01
 num_classes = 10
 num_channels = 3
 BATCH_SIZE = 64
 
+# samplanje vhodov: naključna slika, ena slika, 3 kanali, velikost 32 x 32
 sample_input = torch.rand((1, num_channels, 32, 32))
 
+# transformacija trening in testnih slik
+# trening slike horizontalno/vertikalno filpnemo, dodamo padding in random cropamo
+# oboje pretvorimo v tenzor in normaliziramo
 train_transform = transforms.Compose([
     transforms.RandomHorizontalFlip(),
     #transforms.RandomVerticalFlip(),
@@ -41,17 +46,20 @@ test_transforms = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
 ])
 
+# Nastavimo naključne vrednosti, ki so deterministične, se bodo lahko ponovile
 torch.manual_seed(42)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(42)
 #torch.set_default_tensor_type(torch.cuda.FloatTensor)
 
+# CUDA dostopna, nastavi device na GPU/CPU
 print(f'CUDA drivers are installed and ready:', "yes" if torch.cuda.is_available() else "No")
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+# Logging
 writer = SummaryWriter("runs/CIFAR")
 
+
+# Priprava datasetov, razdelitev na test/val, dataloaderji
 cifar_trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
 cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transforms)
 
@@ -59,7 +67,7 @@ train_size = int(0.8 * len(cifar_trainset))
 val_size = len(cifar_trainset) - train_size
 train_dataset, val_dataset = random_split(cifar_trainset, [train_size, val_size])
 
-trainDataLoader = DataLoader(cifar_trainset, shuffle=True, batch_size=BATCH_SIZE, num_workers=6, pin_memory=True)
+trainDataLoader = DataLoader(cifar_trainset, shuffle=True, batch_size=BATCH_SIZE, num_workers=4, pin_memory=True)
 testDataLoader = DataLoader(cifar_testset, batch_size=BATCH_SIZE)
 valDataLoader = DataLoader(val_dataset, batch_size=	BATCH_SIZE)
 
@@ -134,29 +142,57 @@ test_loader = data_loader(data_dir='./data',
                               batch_size=64,
                               test=True)
 """
-def test(model, testDataLoader, device):	# test function for testing accuracy
-    model.eval().to(device)  
-    pravilni = 0
-    vsi = 0
-   # with torch.no_grad():  # Izključi izračun gradientov za hitrejše izvajanje
-    for images, labels in testDataLoader:
-		#images = images.reshape(-1, 32*32).to(device) # pretvori v 1D tenzor, kar pa v resnici ne želimo, konv sloji želijo več dimenzionalne podatke
-        labels = labels.to(device)
-        images = images.to(device)
-        outputs = model(images)
-        _, predicted = torch.max(outputs.data, 1)
-        vsi += labels.size(0)
-        pravilni += (predicted == labels).sum().item()
-        
+import torch
+
+def test(model, testDataLoader, device):
+    """
+    Test function for evaluating model accuracy.
     
-    acc = 100 * pravilni / vsi
+    Args:
+        model: The neural network model to test.
+        testDataLoader: DataLoader containing the test dataset.
+        device: The device to run the model on (CPU or GPU).
+    
+    Returns:
+        acc: The accuracy of the model on the test dataset.
+    """
+    model.eval().to(device)
+    correct = 0
+    total = 0
+
+    # Disable gradient calculation for faster inference
+    with torch.no_grad():
+        for images, labels in testDataLoader:
+            images = images.to(device)
+            labels = labels.to(device)
+            outputs = model(images)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    
+    acc = 100 * correct / total
     return acc
+
 
 
 
 class ResidualBlock(Module):
     def __init__(self, in_channels, out_channels, stride=1, downsample=None):
         super(ResidualBlock, self).__init__()
+        """
+
+        Zgradba Residual bloka.
+
+        Prva konvolucijska plast zmanjšuje dimenzijo glede na stride,
+        druga plast izvaja konvolucijo, a ohrani dimenzijo slike.
+
+        Vhodi:
+            št. vhodnih kanalov
+            št. izhodnih kanalov
+            stride - korak
+            downsample - skip connection
+        
+        """
         self.conv1 = nn.Sequential(
                         nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1),
                         nn.BatchNorm2d(out_channels),
@@ -170,13 +206,13 @@ class ResidualBlock(Module):
         self.relu = nn.ReLU()
         self.out_channels = out_channels
 
-    def forward(self, x):
+    def forward(self, x):   # skip connection
         residual = x
         out = self.conv1(x)
         out = self.conv2(out)
-        if self.downsample:
+        if self.downsample: # če je 1, gre delat skp connection
             residual = self.downsample(x)
-        out += residual
+        out += residual # doda se skip vrednost
         out = self.relu(out)
         return out
 
@@ -186,18 +222,19 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.inplanes = 64
         self.conv1 = nn.Sequential(
-                        nn.Conv2d(3, 64, kernel_size = 7, stride = 2, padding = 3),
+                        nn.Conv2d(3, 64, kernel_size = 7, stride = 2, padding = 3), # ven pride 16 x 16 x 64
                         nn.BatchNorm2d(64),
                         nn.ReLU())
-        self.maxpool = nn.MaxPool2d(kernel_size = 3, stride = 2, padding = 1)
-        self.layer0 = self._make_layer(block, 64, layers[0], stride = 1)
-        self.layer1 = self._make_layer(block, 128, layers[1], stride = 2)
-        self.layer2 = self._make_layer(block, 256, layers[2], stride = 2)
-        self.layer3 = self._make_layer(block, 512, layers[3], stride = 2)
-        self.avgpool = nn.AvgPool2d(7, stride=1)
+        self.maxpool = nn.MaxPool2d(kernel_size = 3, stride = 2, padding = 1)   # ven pride 8 x 8 x 64
+        self.layer0 = self._make_layer(block, 64, layers[0], stride = 1)    # ohrani se dimenzija 8 x 8 x 64, se pa izvaja konvolucija
+        self.layer1 = self._make_layer(block, 128, layers[1], stride = 2)   # pride ven 4 x 4 x 128
+        self.layer2 = self._make_layer(block, 256, layers[2], stride = 2)   # pride ven 2 x 2 x 256
+        self.layer3 = self._make_layer(block, 512, layers[3], stride = 2)   # pride ven 1 x 1 x 512
+        #self.avgpool = nn.AvgPool2d(7, stride=1)    #ne rabi bit kernel 7, ker je itak slika že 1x1
         self.fc = nn.Linear(512, num_classes)
 
     def _make_layer(self, block, planes, blocks, stride=1):
+        
         downsample = None
         if stride != 1 or self.inplanes != planes:
             
@@ -211,9 +248,9 @@ class ResNet(nn.Module):
         for i in range(1, blocks):
             layers.append(block(self.inplanes, planes))
 
-        return nn.Sequential(*layers)
+        return nn.Sequential(*layers)   # poglej, zakaj je tle zvezdica???
 
-    def forward(self, x):
+    def forward(self, x):   # skip connection
         x = self.conv1(x)
         x = self.maxpool(x)
         x = self.layer0(x)
@@ -221,22 +258,21 @@ class ResNet(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
 
-        x = self.avgpool(x)
+        #x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         x = self.fc(x)
 
         return x
 
 
-model = ResNet(ResidualBlock, [3, 4, 6, 3]).to(device)
-
-criterion = nn.CrossEntropyLoss()
+model = ResNet(ResidualBlock, [1, 1, 1, 1]).to(device)  
+criterion = nn.CrossEntropyLoss().to(device) 
 optimizer = torch.optim.SGD(model.parameters(), lr = learning_rate, weight_decay=0.001, momentum=0.9)
 
-total_step = len(train_loader)
+total_step = len(trainDataLoader)
 
-for epoch in range(num_epochs):
-    for i, (images, labels) in enumerate(train_loader):
+"""for epoch in range(num_epochs):
+    for i, (images, labels) in enumerate(trainDataLoader):
         images = images.to(device)
         labels = labels.to(device)
 
@@ -249,6 +285,7 @@ for epoch in range(num_epochs):
         del images, labels, outputs
         torch.cuda.empty_cache()
         gc.collect()
+       
 
     print("Epoch [{}/{}], Loss: {:.4f}".format(epoch+1, num_epochs, loss.item()))
 
@@ -257,7 +294,7 @@ for epoch in range(num_epochs):
         pravilni = 0
         vsi = 0
 
-        for images, labels in valid_loader:
+        for images, labels in valDataLoader:
             images = images.to(device)
             labels = labels.to(device)
             outputs = model(images)
@@ -271,7 +308,7 @@ for epoch in range(num_epochs):
 with torch.no_grad():
     pravilni = 0
     vsi = 0
-    for images, labels in test_loader:
+    for images, labels in testDataLoader:
         images = images.to(device)
         labels = labels.to(device)
         outputs = model(images)
@@ -281,5 +318,39 @@ with torch.no_grad():
         del images, labels, outputs
 
     print('Natančnost na testni množici: {}%'.format(10000, 100*pravilni/vsi))
+"""
 
 
+for epoch in range(num_epochs):
+    losses = []
+    acc = []
+    for i, (images, labels) in enumerate(trainDataLoader):
+        labels = labels.to(device)
+        images = images.to(device)
+
+        # forward pass
+        output = model(images)
+        loss = criterion(output, labels)
+
+        # backpropagation
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        #sprotno računanje natančnosti
+        _, napovedi = output.max(1)
+        stevilo_pravilnih = (napovedi == labels).sum()
+        sprotni_acc = float(stevilo_pravilnih) / float(images.shape[0])
+        acc.append(sprotni_acc)
+        losses.append(loss.item())
+
+        if (i+1) % 100 == 0:
+            print(f'epoch: [{epoch+1}/{num_epochs}], step: [{i+1}/{total_step}], loss: {loss.item():.3f}, acc: {sprotni_acc}')
+    
+    val_acc = test(model, testDataLoader, device)
+    natancnost = test(model, valDataLoader, device)
+    print(f'Validacija: {val_acc}, Natančnost: {natancnost}')
+
+val_acc = test(model, testDataLoader, device)
+natancnost = test(model, valDataLoader, device)
+print(f'Validacija: {val_acc}, Natančnost: {natancnost}')
