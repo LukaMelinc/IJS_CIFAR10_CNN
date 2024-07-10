@@ -25,7 +25,7 @@ num_epochs = 20
 learning_rate = 0.01
 num_classes = 10
 num_channels = 3
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 
 # samplanje vhodov: naključna slika, ena slika, 3 kanali, velikost 32 x 32
 sample_input = torch.rand((1, num_channels, 32, 32))
@@ -67,7 +67,7 @@ train_size = int(0.8 * len(cifar_trainset))
 val_size = len(cifar_trainset) - train_size
 train_dataset, val_dataset = random_split(cifar_trainset, [train_size, val_size])
 
-trainDataLoader = DataLoader(cifar_trainset, shuffle=True, batch_size=BATCH_SIZE, num_workers=4, pin_memory=True)
+trainDataLoader = DataLoader(cifar_trainset, shuffle=True, batch_size=BATCH_SIZE, num_workers=6, pin_memory=True)
 testDataLoader = DataLoader(cifar_testset, batch_size=BATCH_SIZE)
 valDataLoader = DataLoader(val_dataset, batch_size=	BATCH_SIZE)
 
@@ -191,10 +191,14 @@ class ResidualBlock(Module):
             št. izhodnih kanalov
             stride - korak
             downsample - skip connection
+
+        Prva konvolucijska plast dejansko lahko spremeni dimenzijo obdelane slike, če je pri klicu funkcije stride > 1 (zmanjša dimenzijo slike).
+        Če je stride = 1, se pri teh parametrih dimenzija slike ohrani in se izvaja samo konvolucija.
+        Druga plast ima default vrednost stride = 1, torej ne spreminja velikosti slike.
         
         """
-        self.conv1 = nn.Sequential(
-                        nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1),
+        self.conv1 = nn.Sequential(     
+                        nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1),  
                         nn.BatchNorm2d(out_channels),
                         nn.ReLU()
                     )
@@ -219,6 +223,20 @@ class ResidualBlock(Module):
 
 class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes = 10):
+        """
+        
+        Struktura ResNet mreže.
+
+        1 konvolucijska plast (k=7, s=2, p=3).
+        4 plasti, sestavljene iz residualnih blokov, definiranih v zgornjem classu. Št. blokov v plasti se definira ob klicu classa.
+        Nakoncu avgpool (se ne rabi) in fc plast 512->10 (št. razredov v CIFAR10).
+
+        Vhodi:
+            Tip bloka: Residualni blok
+            Arrray plasti/blokov: array, ki določi, koliko blokov sestavlja posamezno plast
+            Št. razredov: 10
+        
+        """
         super(ResNet, self).__init__()
         self.inplanes = 64
         self.conv1 = nn.Sequential(
@@ -234,21 +252,38 @@ class ResNet(nn.Module):
         self.fc = nn.Linear(512, num_classes)
 
     def _make_layer(self, block, planes, blocks, stride=1):
+        """
         
+        Sestavlja sekvence (residualnih) blokov v plasti mreže.
+        Na podlagi velikosti maske, koraka (stride) in dodajanja (padding) plast spreminja ali ohranja dimenzijo obdelane slike.
+        Tudi v primeru, da se dimenzije ne zmanjšajo in se samo izvaja konvolucija, se mreža uči.
+        Blokom ni potrebno, da zmanjšujejo dimenzijo ali spremeniti število filtrov, takrat imajo stride/korak = 1 in so brez downsampla.
+
+        Vhodi:
+            block: Tip bloka(residual block)
+            planes: št. filtrov
+            blocks: število blokov v posamezni plasti
+            stride: velikost koraka (v prvi konvolucijski plasti)
+        
+        """
         downsample = None
-        if stride != 1 or self.inplanes != planes:
+        if stride != 1 or self.inplanes != planes:  # downsample se nastavi, če se zmanjšujejo dimenzije slike/št. vhodnih kanalov se ne ujema s št. izhodnih
             
             downsample = nn.Sequential(
                 nn.Conv2d(self.inplanes, planes, kernel_size=1, stride=stride),
                 nn.BatchNorm2d(planes),
             )
-        layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample))
-        self.inplanes = planes
-        for i in range(1, blocks):
+        layers = [] # prazen array za držanje residualnih blokov
+        layers.append(block(self.inplanes, planes, stride, downsample))  # Residualni blok se ustvari in doda k layers
+        self.inplanes = planes  # št. izhodnih filtrov se shrani v spremenljivko št. vhodnih filtrov
+
+        for i in range(1, blocks):  # ustvarimo toliko layerjev, kolikor je elementov v arrayu, s katerim kličemo model
             layers.append(block(self.inplanes, planes))
 
-        return nn.Sequential(*layers)   # poglej, zakaj je tle zvezdica???
+        return nn.Sequential(*layers)     
+
+        # * je unpacking operator, odpakira elemente v listu layers, da so lahko podani kot individualni argumenti v nn.Sequential konstruktor
+        # V pythonu se * uporablja pred listom/tuplom pri klicu funkcije, ko odpakira iterable in poda elemente kot ločene argumente
 
     def forward(self, x):   # skip connection
         x = self.conv1(x)
@@ -265,7 +300,7 @@ class ResNet(nn.Module):
         return x
 
 
-model = ResNet(ResidualBlock, [1, 1, 1, 1]).to(device)  
+model = ResNet(ResidualBlock, [2, 2, 2, 2]).to(device)  
 criterion = nn.CrossEntropyLoss().to(device) 
 optimizer = torch.optim.SGD(model.parameters(), lr = learning_rate, weight_decay=0.001, momentum=0.9)
 
@@ -354,3 +389,6 @@ for epoch in range(num_epochs):
 val_acc = test(model, testDataLoader, device)
 natancnost = test(model, valDataLoader, device)
 print(f'Validacija: {val_acc}, Natančnost: {natancnost}')
+
+
+torch.save(model, 'ResNet_model.pth')
