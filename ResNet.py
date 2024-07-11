@@ -20,12 +20,18 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.tensorboard import SummaryWriter
 import gc
 
+
 # hiperparametri
-num_epochs = 20
+num_epochs = 10
 learning_rate = 0.01
 num_classes = 10
 num_channels = 3
 BATCH_SIZE = 32
+
+writer = SummaryWriter("runs/CIFAR")
+
+
+
 
 # samplanje vhodov: naključna slika, ena slika, 3 kanali, velikost 32 x 32
 sample_input = torch.rand((1, num_channels, 32, 32))
@@ -306,55 +312,7 @@ optimizer = torch.optim.SGD(model.parameters(), lr = learning_rate, weight_decay
 
 total_step = len(trainDataLoader)
 
-"""for epoch in range(num_epochs):
-    for i, (images, labels) in enumerate(trainDataLoader):
-        images = images.to(device)
-        labels = labels.to(device)
-
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        del images, labels, outputs
-        torch.cuda.empty_cache()
-        gc.collect()
-       
-
-    print("Epoch [{}/{}], Loss: {:.4f}".format(epoch+1, num_epochs, loss.item()))
-
-    # Validacija
-    with torch.no_grad():
-        pravilni = 0
-        vsi = 0
-
-        for images, labels in valDataLoader:
-            images = images.to(device)
-            labels = labels.to(device)
-            outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            vsi += labels.size(0)
-            pravilni += (pravilni == labels).sum().item()
-            del images, labels, outputs
-
-        print('Natančnost mreže: {}%, validacija: {}%'.format(5000, 100*pravilni/vsi))
-
-with torch.no_grad():
-    pravilni = 0
-    vsi = 0
-    for images, labels in testDataLoader:
-        images = images.to(device)
-        labels = labels.to(device)
-        outputs = model(images)
-        _, predicted = torch.max(outputs.data, 1)
-        vsi += labels.size(0)
-        pravilni += (pravilni == labels).sum().item()
-        del images, labels, outputs
-
-    print('Natančnost na testni množici: {}%'.format(10000, 100*pravilni/vsi))
-"""
-
+writer.add_graph(model, sample_input.to(device))
 
 for epoch in range(num_epochs):
     losses = []
@@ -378,6 +336,8 @@ for epoch in range(num_epochs):
         sprotni_acc = float(stevilo_pravilnih) / float(images.shape[0])
         acc.append(sprotni_acc)
         losses.append(loss.item())
+        writer.add_scalar('Sprotna natančnost', sprotni_acc, epoch * total_step + i)
+        writer.add_scalar('Loss', loss, epoch * total_step + i)
 
         if (i+1) % 100 == 0:
             print(f'epoch: [{epoch+1}/{num_epochs}], step: [{i+1}/{total_step}], loss: {loss.item():.3f}, acc: {sprotni_acc}')
@@ -385,6 +345,8 @@ for epoch in range(num_epochs):
     val_acc = test(model, testDataLoader, device)
     natancnost = test(model, valDataLoader, device)
     print(f'Validacija: {val_acc}, Natančnost: {natancnost}')
+    writer.add_scalar('Vrednost validacije', val_acc, epoch)
+    writer.add_scalar('Testni rezultat', natancnost, epoch)
 
 val_acc = test(model, testDataLoader, device)
 natancnost = test(model, valDataLoader, device)
@@ -392,3 +354,69 @@ print(f'Validacija: {val_acc}, Natančnost: {natancnost}')
 
 
 torch.save(model, 'ResNet_model.pth')
+
+############################################
+#trening za različne kombinacije parametrov#
+############################################
+
+"""
+# Define parameter combinations
+learning_rates = [0.001, 0.01, 0.1]
+num_blocks_options = [
+    [2, 2, 2],  # Example: ResNet18
+    [3, 4, 6],  # Example: ResNet34
+]
+
+# Train and log results for each combination
+for lr in learning_rates:
+    for num_blocks in num_blocks_options:
+        model = ResNet(ResidualBlock, num_blocks).to(device)
+        criterion = nn.CrossEntropyLoss().to(device)
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=0.001, momentum=0.9)
+        writer = SummaryWriter(f"runs/CIFAR_lr_{lr}_blocks_{num_blocks}")
+
+        sample_input = torch.rand((1, num_channels, 32, 32)).to(device)
+        writer.add_graph(model, sample_input)
+
+        total_step = len(trainDataLoader)
+
+        for epoch in range(num_epochs):
+            losses = []
+            acc = []
+            for i, (images, labels) in enumerate(trainDataLoader):
+                labels = labels.to(device)
+                images = images.to(device)
+
+                # Forward pass
+                output = model(images)
+                loss = criterion(output, labels)
+
+                # Backpropagation
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                # Track accuracy and loss
+                _, predictions = output.max(1)
+                correct = (predictions == labels).sum()
+                accuracy = float(correct) / float(images.shape[0])
+                acc.append(accuracy)
+                losses.append(loss.item())
+
+                writer.add_scalar('Accuracy', accuracy, epoch * total_step + i)
+                writer.add_scalar('Loss', loss.item(), epoch * total_step + i)
+
+                if (i+1) % 100 == 0:
+                    print(f'LR: {lr}, Blocks: {num_blocks}, Epoch: [{epoch+1}/{num_epochs}], Step: [{i+1}/{total_step}], Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}')
+
+            val_acc = test(model, valDataLoader, device)
+            test_acc = test(model, testDataLoader, device)
+            print(f'Validation Accuracy: {val_acc:.4f}, Test Accuracy: {test_acc:.4f}')
+
+            writer.add_scalar('Validation Accuracy', val_acc, epoch)
+            writer.add_scalar('Test Accuracy', test_acc, epoch)
+
+        writer.close()
+
+print("Training complete.")
+"""
