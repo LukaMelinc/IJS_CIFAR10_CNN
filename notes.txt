@@ -82,3 +82,54 @@ a specific word or phrase.
 
 Learning rate: 0.1 je precej prevelik, slabi rezultati
 
+How to optimize hyperparameters:
+1) Grid search
+2) Random search
+3) Bayesian optimization
+4) Hyperband
+5) Genetic algorithm
+6) Automated Machine Learning (AutoML)
+
+Pytorch optimizers from the most basic to more complex
+
+SGD
+SGD with Momentum
+SGD with Nesterov Momentum
+Adagrad
+RMSprop
+Adam
+AdamW
+NAdam
+Adamax
+AMSGrad
+
+Pytorch schedulers rated from the most basic to the most complex one
+
+StepLR
+MultiStepLR
+ExponentialLR
+CosineAnnealingLR
+ReduceLROnPlateau
+CyclicLR
+OneCycleLR
+CosineAnnealingWarmRestarts
+LambdaLR
+PolynomialLR (custom implementation)
+
+Pytorch criterions rated from the most basic one to the more advanced
+
+MSELoss
+L1Loss
+CrossEntropyLoss
+BCELoss
+BCEWithLogitsLoss
+NLLLoss
+SmoothL1Loss
+KLDivLoss
+CosineEmbeddingLoss
+TripletMarginLoss
+CTCLoss
+MarginRankingLoss
+HingeEmbeddingLoss
+MultiLabelMarginLoss
+

@@ -235,7 +235,7 @@ class ResNet(nn.Module):
         return x
 
 #normalno treniranje
-
+"""
 model = ResNet(ResidualBlock, [2, 2, 2, 2]).to(device)  
 criterion = nn.CrossEntropyLoss().to(device) 
 optimizer = torch.optim.SGD(model.parameters(), lr = learning_rate, weight_decay=0.001, momentum=0.9)
@@ -284,3 +284,68 @@ print(f'Validacija: {val_acc}, Natančnost: {natancnost}')
 
 
 torch.save(model, 'ResNet_model.pth')
+"""
+############################################
+#trening za različne kombinacije parametrov#
+############################################
+
+
+# Define parameter combinations
+learning_rates = [0.001, 0.01, 0.1]
+num_blocks_options = [
+    [2, 2, 2],  
+    [3, 4, 6],  
+]
+
+# Train and log results for each combination
+for lr in learning_rates:
+    for num_blocks in num_blocks_options:
+        model = ResNet(ResidualBlock, num_blocks).to(device)
+        criterion = nn.CrossEntropyLoss().to(device)
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=0.001, momentum=0.9)
+        writer = SummaryWriter(f"runs/CIFAR_lr_{lr}_blocks_{num_blocks}")
+
+        sample_input = torch.rand((1, num_channels, 32, 32)).to(device)
+        writer.add_graph(model, sample_input)
+
+        total_step = len(trainDataLoader)
+
+        for epoch in range(num_epochs):
+            losses = []
+            acc = []
+            for i, (images, labels) in enumerate(trainDataLoader):
+                labels = labels.to(device)
+                images = images.to(device)
+
+                # Forward pass
+                output = model(images)
+                loss = criterion(output, labels)
+
+                # Backpropagation
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                # Track accuracy and loss
+                _, predictions = output.max(1)
+                correct = (predictions == labels).sum()
+                accuracy = float(correct) / float(images.shape[0])
+                acc.append(accuracy)
+                losses.append(loss.item())
+
+                writer.add_scalar('Accuracy', accuracy, epoch * total_step + i)
+                writer.add_scalar('Loss', loss.item(), epoch * total_step + i)
+
+                if (i+1) % 100 == 0:
+                    print(f'LR: {lr}, Blocks: {num_blocks}, Epoch: [{epoch+1}/{num_epochs}], Step: [{i+1}/{total_step}], Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}')
+
+            val_acc = test(model, valDataLoader, device)
+            test_acc = test(model, testDataLoader, device)
+            print(f'Validation Accuracy: {val_acc:.4f}, Test Accuracy: {test_acc:.4f}')
+
+            writer.add_scalar('Validation Accuracy', val_acc, epoch)
+            writer.add_scalar('Test Accuracy', test_acc, epoch)
+
+        writer.close()
+
+print("Training complete.")
