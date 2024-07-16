@@ -26,15 +26,15 @@ num_epochs = 10
 learning_rate = 0.01
 num_classes = 10
 num_channels = 3
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 
 run_description = """
 num epoch: 10
-lr: testira 0.005 - 0.0005 + 0.00005
-network: ResNet [2,2,2,2] in [3, 4, 6, 4]
+Testiranje lr in weight decay za Adam
 """
 
-writer = SummaryWriter("runs/CIFAR")
+writer = SummaryWriter("runs/Tor_16_7/01")
+writer.add_text("Run descriptor", run_description, 0)
 
 
 
@@ -68,7 +68,7 @@ if torch.cuda.is_available():
 print(f'CUDA drivers are installed and ready:', "yes" if torch.cuda.is_available() else "No")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Logging
-writer = SummaryWriter("runs/CIFAR")
+
 
 
 # Priprava datasetov, razdelitev na test/val, dataloaderji
@@ -297,65 +297,78 @@ torch.save(model, 'ResNet_model.pth')
 
 
 # Define parameter combinations
-optimizer_types = {
-    'SGD': lambda params, lr: optim.SGD(params, lr=lr, weight_decay=0.001, momentum=0.9),
-    'Adam': lambda params, lr: optim.Adam(params, lr=lr),
-    'RMSprop': lambda params, lr: optim.RMSprop(params, lr=lr)
-}
-learning_rates = [0.005, 0.003, 0.001, 0.0009, 0.0007, 0.0005, 0.00005]
-num_blocks_options = [
-    [2, 2, 2, 2],  # Example: ResNet18
-    [3, 4, 6, 4],  # Example: ResNet34
-]
 
-# Train and log results for each combination
+learning_rates = [0.002, 0.001, 0.0009, 0.0008, 0.0007, 0.0006]
+weight_decays = [0, 0.01, 0.03, 0.05, 0.07, 0.1]
+
+model = ResNet(ResidualBlock, [2, 2, 2, 2]).to(device)
+criterion = nn.CrossEntropyLoss().to(device)
+# Main training loop
+
 for lr in learning_rates:
-    for num_blocks in num_blocks_options:
-        model = ResNet(ResidualBlock, num_blocks).to(device)
-        criterion = nn.CrossEntropyLoss().to(device)
-        optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=0.001, momentum=0.9)
-        writer = SummaryWriter(f"runs/Pon_15_7/01/lr_{lr}_blocks_{num_blocks}")
+    for wd in weight_decays:
+        
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=wd)
+        
+        writer = SummaryWriter(f"runs/Tor_16_7/01/_LR_{lr}_wd_{wd}")
 
+        # Log the model graph
         sample_input = torch.rand((1, num_channels, 32, 32)).to(device)
         writer.add_graph(model, sample_input)
 
         total_step = len(trainDataLoader)
 
         for epoch in range(num_epochs):
-            losses = []
-            acc = []
+            model.train()
+            epoch_losses = []
+            epoch_accuracies = []
+
             for i, (images, labels) in enumerate(trainDataLoader):
-                labels = labels.to(device)
-                images = images.to(device)
-
+                images, labels = images.to(device), labels.to(device)
+                
                 # Forward pass
-                output = model(images)
-                loss = criterion(output, labels)
+                outputs = model(images)
+                loss = criterion(outputs, labels)
 
-                # Backpropagation
+                # Backward pass and optimization
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
-                # Track accuracy and loss
-                _, predictions = output.max(1)
-                correct = (predictions == labels).sum()
-                accuracy = float(correct) / float(images.shape[0])
-                acc.append(accuracy)
-                losses.append(loss.item())
+                # Calculate accuracy
+                _, predicted = outputs.max(1)
+                correct = (predicted == labels).sum().item()
+                accuracy = correct / labels.size(0)
+                
+                epoch_losses.append(loss.item())
+                epoch_accuracies.append(accuracy)
 
-                writer.add_scalar('Accuracy', accuracy, epoch * total_step + i)
-                writer.add_scalar('Loss', loss.item(), epoch * total_step + i)
+                # Log loss and accuracy
+                writer.add_scalar('Train/Loss', loss.item(), epoch * total_step + i)
+                writer.add_scalar('Train/Accuracy', accuracy, epoch * total_step + i)
 
-                if (i+1) % 100 == 0:
-                    print(f'LR: {lr}, Blocks: {num_blocks}, Epoch: [{epoch+1}/{num_epochs}], Step: [{i+1}/{total_step}], Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}')
+                if (i + 1) % 100 == 0:
+                    print(f'LR: {lr}, Epoch: [{epoch+1}/{num_epochs}], Step: [{i+1}/{total_step}], Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}')
 
-            val_acc = test(model, valDataLoader, device)
-            test_acc = test(model, testDataLoader, device)
-            print(f'Validation Accuracy: {val_acc:.4f}, Test Accuracy: {test_acc:.4f}')
+            # Validation accuracy
+            val_accuracy = test(model, valDataLoader, device)
+            test_accuracy = test(model, testDataLoader, device)
+            writer.add_scalar('Validation/Accuracy', val_accuracy, epoch)
+            writer.add_scalar('Test/Accuracy', test_accuracy, epoch)
 
-            writer.add_scalar('Validation Accuracy', val_acc, epoch)
-            writer.add_scalar('Test Accuracy', test_acc, epoch)
+            print(f'Epoch [{epoch+1}/{num_epochs}] Validation Accuracy: {val_accuracy:.4f}, Test Accuracy: {test_accuracy:.4f}')
+
+        # Log hyperparameters and metrics
+        hparams = {
+            'lr': lr,
+            'Weight_decay': wd,
+            
+        }
+        metrics = {
+            'accuracy': test_accuracy,
+            'validation_accuracy': val_accuracy
+        }
+        writer.add_hparams(hparams, metrics)
 
         writer.close()
 

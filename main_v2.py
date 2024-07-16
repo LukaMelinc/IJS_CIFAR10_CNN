@@ -13,8 +13,21 @@ from torch.utils.tensorboard import SummaryWriter
 num_channels = 3
 num_classes = 10
 BATCH_SIZE = 64
-num_epochs = 100
+num_epochs = 10
 
+
+# Tensorboard logging
+writer = SummaryWriter("runs/Tor_16_7/02") # nastavi direktorij, kamor naj se shranjujejo logi
+
+# nastavi opis treninga, da se ve, kaj je kaj
+run_description = """
+Experiment: main_v2.py
+Epoch: 10/experiment
+testing lr: 0.05 to 0.0008, optimizers SGD; Adam; RMSpropcd 
+Note: testing learning rates and optimizers for mainV2 arhitecture
+"""
+
+writer.add_text("Run description", run_description, 0)
 
 sample_input = torch.rand((1, num_channels, 32, 32))
 
@@ -46,8 +59,8 @@ if torch.cuda.is_available():
 # CUDA dostopna, nastavi device na GPU/CPU
 print(f'CUDA drivers are installed and ready:', "yes" if torch.cuda.is_available() else "No")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# Logging
-writer = SummaryWriter("runs/CIFAR")
+
+
 
 # Priprava datasetov, razdelitev na test/val, dataloaderji
 cifar_trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
@@ -117,56 +130,73 @@ class CNN(nn.Module):
 
         return x
 
-model = CNN().to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.004, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
-
+learning_rates = [0.01, 0.009, 0.007, 0.005, 0.003, 0.001, 0.0009]
 criterion = nn.CrossEntropyLoss().to(device)
 
 num_steps = len(trainDataLoader)
+model = CNN().to(device)
 writer.add_graph(model, sample_input.to(device))
+for lr in learning_rates:
+    optimizers = {
+    'SGD': torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9),
+    'Adam': torch.optim.Adam(model.parameters(), lr=lr),
+    'RMSprop': torch.optim.RMSprop(model.parameters(), lr=lr)
+    }
+    for optim_name, optimizer in optimizers.items():
+        writer = SummaryWriter(f"runs/Tor_16_7/02/lr_{lr}_optim_{optimizer}")
+        model = CNN().to(device)    # za vsak optimizator je potrebno reinicializirati model
+        for epoch in range(num_epochs):
+            losses = []
+            acc = []
 
-for epoch in range(num_epochs):
-    loss = []
-    acc = []
+            for i , (images, labels) in enumerate(trainDataLoader):
+                labels = labels.to(device)
+                images = images.to(device)
 
-    for i , (images, labels) in enumerate(trainDataLoader):
-        labels = labels.to(device)
-        images = images.to(device)
+                optimizer.zero_grad()
+                output = model(images)
+                loss = criterion(output, labels)
 
-        output = model(images)
-        loss = criterion(output, labels)
+                
+                loss.backward()
+                optimizer.step()
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+                #acc
+                _, napovedi = output.max(1)
+                stevilo_pravilnih = (napovedi == labels).sum().item()
+                sprotni_acc = float(stevilo_pravilnih) / float(images.shape[0])
+                writer.add_scalar('Sprotna natančnost', sprotni_acc, epoch * num_steps + i)
+                acc.append(sprotni_acc)
+                losses.append(loss.item())
+                writer.add_scalar('Loss', loss, epoch*num_steps+1)
+                #writer.add_scalar("lr",scheduler.get_last_lr() , epoch*num_steps+1)
+                
+                if (i+1) % 100 == 0:
+                    #print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}, acc = {sprotni_acc}, lr ={scheduler.get_last_lr()}')
+                    print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}, acc = {sprotni_acc}, lr = {lr}, optim = {optim_name}')
+                            
+            val_accuracy = test(model, valDataLoader, device)
+            writer.add_scalar("Val acc", val_accuracy, epoch)
+            natančnost = test(model, testDataLoader, device)
+            writer.add_scalar("Test acc", natančnost, epoch)
+            print(f'Validation score: {val_accuracy}, Test score: {natančnost}')
+            #scheduler.step()
+        natančnost = test(model, testDataLoader, device)
+        validacija = test(model, valDataLoader, device)
+        # Log hyperparameters and metrics
+        hparams = {
+            'lr': lr,
+            'Optimizer': optimizer,
+            
+        }
+        metrics = {
+            'accuracy': natančnost,
+            'validation_accuracy': validacija
+        }
+        writer.add_hparams(hparams, metrics)
 
-        #acc
-        _, napovedi = output.max(1)
-        stevilo_pravilnih = (napovedi == labels).sum().item()
-        sprotni_acc = float(stevilo_pravilnih) / float(images.shape[0])
-        writer.add_scalar('Sprotna natančnost', sprotni_acc, epoch * num_steps + i)
-        acc.append(sprotni_acc)
-        loss.append(loss.item())
-        writer.add_scalar('Loss', loss, epoch*num_steps+1)
-        #writer.add_scalar("lr",scheduler.get_last_lr() , epoch*num_steps+1)
+        writer.close()
+            
+                
         
-        if (i+1) % 100 == 0:
-            #print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}, acc = {sprotni_acc}, lr ={scheduler.get_last_lr()}')
-            print(f'epoch {epoch+1}/{num_epochs}, step = {i+1}/{num_steps}, loss = {loss.item():.3f}, acc = {sprotni_acc}')
-                    
-    val_accuracy = test(model, valDataLoader, device)
-    writer.add_scalar("Val acc", val_accuracy, epoch)
-    natančnost = test(model, testDataLoader, device)
-    writer.add_scalar("Test acc", natančnost, epoch)
-    print(f'Validation score: {val_accuracy}, Test score: {natančnost}')
-    #scheduler.step()
-	
-     	
-natančnost = test(model, testDataLoader, device)
-validacija = test(model, valDataLoader, device)
 writer.close()
-
-
-
-
-
