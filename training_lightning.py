@@ -23,11 +23,23 @@ class LightningResNet(pl.LightningModule):
         images, labels = batch
         outputs = self(images)
         loss = self.criterion(outputs, labels)
-        _, predicted = outputs.max(1)
-        correct = (predicted == labels).sum().item()
+        _, predicted = outputs.max(1)   # predicted je tenzor z predvidenim indeksom razreda
+        correct = (predicted == labels).sum().item()    # .item() metoda iz tenzorja potegne vrednost in jo pretvori v floar/int
         accuracy = correct / labels.size(0)
         self.log('train_loss', loss, on_step=True, on_epoch=True)
         self.log('train_acc', accuracy, on_step=True, on_epoch=True)
+        return loss
+
+
+    def test_step(self, batch, batch_idx):
+        images, labels = batch
+        outputs = self(images)
+        loss = self.criterion(outputs, labels)
+        _, predicted = outputs.max(1)
+        correct = (predicted == labels).sum().item()
+        accuracy = correct / labels.size(0)
+        self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log('val_acc', accuracy, on_step=True, on_epoch=True, prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -92,7 +104,7 @@ class Cifar10DataModule(pl.LightningDataModule):
 learning_rates = [0.005, 0.004, 0.003, 0.002, 0.001, 0.0009, 0.0008]
 
 batch_size = 64
-num_epochs = 15
+num_epochs = 12
 num_workers = 4
 
 cifar10_dm = Cifar10DataModule(batch_size=batch_size, num_workers=num_workers)
@@ -104,7 +116,16 @@ for lr in learning_rates:
     model = LightningResNet(learning_rate=lr)
 
     # Initialize the TensorBoard logger
-    logger = TensorBoardLogger("runs/Tor_16_7/03", name=f"LR_{lr}")
+    logger = TensorBoardLogger("runs/Cet_18_7/01", name=f"LR_{lr}")
+
+    # Hyperparameters logging
+    hyperparameters = {
+        'learning_rate': lr,
+        'batch_size': batch_size,
+        'num_epochs': num_epochs,
+        'num_workers': num_workers
+    }
+    logger.log_hyperparams(hyperparameters)
 
     # Initialize the PyTorch Lightning trainer
     trainer = pl.Trainer(
